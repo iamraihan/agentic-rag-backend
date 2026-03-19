@@ -16,7 +16,6 @@ dependencies = [
     "google-genai>=1.0.0",
     "python-multipart>=0.0.12",
     "pypdf>=5.1.0",
-    "tiktoken>=0.8.0",
 ]
 
 [project.optional-dependencies]

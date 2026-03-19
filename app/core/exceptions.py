@@ -20,11 +20,3 @@ class FileTooLargeError(HTTPException):
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"File exceeds maximum size of {max_mb}MB",
         )
-
-
-class ThreadNotFoundError(HTTPException):
-    def __init__(self, thread_id: str) -> None:
-        super().__init__(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Thread not found: {thread_id}",
-        )
