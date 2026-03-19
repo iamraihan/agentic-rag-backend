@@ -1,6 +1,7 @@
 import uuid
 
-from sqlalchemy import delete, select, text
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import cast, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.kb.models import DocumentChunk
@@ -22,10 +23,8 @@ class DocumentChunkRepository:
         namespace: str = "default",
         top_k: int = 4,
     ) -> list[tuple[DocumentChunk, float]]:
-        embedding_literal = f"[{','.join(str(v) for v in embedding)}]"
-        distance_expr = DocumentChunk.embedding.cosine_distance(
-            text(f"'{embedding_literal}'::vector")
-        )
+        embedding_vector = cast(embedding, Vector(len(embedding)))
+        distance_expr = DocumentChunk.embedding.cosine_distance(embedding_vector)
 
         stmt = (
             select(DocumentChunk, distance_expr.label("distance"))
@@ -44,7 +43,7 @@ class DocumentChunkRepository:
             .where(DocumentChunk.namespace == namespace)
         )
         result = await self._session.execute(stmt)
-        return result.rowcount  # type: ignore[return-value]
+        return result.rowcount or 0
 
     async def get_by_id(self, chunk_id: uuid.UUID) -> DocumentChunk | None:
         return await self._session.get(DocumentChunk, chunk_id)

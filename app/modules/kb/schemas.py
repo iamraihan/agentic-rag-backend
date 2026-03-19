@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class IngestionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     ok: bool = True
     namespace: str
     source: str
@@ -9,5 +11,7 @@ class IngestionResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     ok: bool = False
     message: str

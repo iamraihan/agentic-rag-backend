@@ -1,15 +1,20 @@
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.db.engine import get_engine
+from app.core.db.session import get_db
 from app.core.logging import setup_logging
 from app.modules.agent.router import router as agent_router
 from app.modules.kb.router import router as kb_router
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -34,9 +39,9 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["*"],
     )
 
@@ -46,10 +51,13 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["Health"])
     async def health_check() -> dict[str, str]:
+        async for db in get_db():
+            await db.execute(text("SELECT 1"))
         return {"status": "healthy"}
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"ok": False, "message": "Internal server error"},

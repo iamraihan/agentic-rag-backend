@@ -34,6 +34,7 @@ class AgentService:
     def __init__(self, settings: Settings, session: AsyncSession) -> None:
         self._provider: LLMProvider = create_llm_provider(settings)
         self._temperature = settings.chat_temperature
+        self._max_iterations = settings.agent_max_iterations
         self._memory = ConversationMemory(session)
         self._retriever = RetrieverService(settings, session, provider=self._provider)
         self._tools = [build_kb_search_tool_definition()]
@@ -80,9 +81,7 @@ class AgentService:
         messages: list[dict[str, Any]],
         namespace: str,
     ) -> dict[str, Any]:
-        max_iterations = 5
-
-        for _ in range(max_iterations):
+        for iteration in range(self._max_iterations):
             llm_response = await self._provider.chat_completion(
                 messages,
                 self._tools,
@@ -106,6 +105,7 @@ class AgentService:
                             namespace=namespace,
                         )
                     else:
+                        logger.warning("Unknown tool called: %s", tool_call.function_name)
                         result = json.dumps(
                             {"error": f"Unknown tool: {tool_call.function_name}"}
                         )
@@ -119,6 +119,7 @@ class AgentService:
                 raw = llm_response.content or ""
                 return self._parse_response(raw)
 
+        logger.warning("Agent loop exhausted after %d iterations", self._max_iterations)
         return {"answer": "I was unable to process your request.", "citations": []}
 
     def _parse_response(self, raw: str) -> dict[str, Any]:
@@ -132,6 +133,6 @@ class AgentService:
             if "answer" in parsed:
                 return parsed
         except json.JSONDecodeError:
-            pass
+            logger.warning("Failed to parse agent response as JSON, using raw text")
 
         return {"answer": raw.strip(), "citations": []}

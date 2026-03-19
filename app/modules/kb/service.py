@@ -1,5 +1,6 @@
 import logging
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -15,6 +16,13 @@ from app.modules.kb.splitter import split_text
 from app.providers.base import LLMProvider
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class IngestionResult:
+    namespace: str
+    source: str
+    total_chunks: int
 
 
 class IngestionService:
@@ -35,11 +43,15 @@ class IngestionService:
         file: UploadFile,
         *,
         namespace: str = "default",
-    ) -> dict[str, object]:
+    ) -> IngestionResult:
         self._validate_file(file)
 
+        # Pre-check file size before reading into memory
+        if file.size and file.size > self._settings.max_upload_size_bytes:
+            raise FileTooLargeError(self._settings.max_upload_size_mb)
+
         with tempfile.NamedTemporaryFile(
-            suffix=Path(file.filename or "file.txt").suffix,
+            suffix=self._safe_suffix(file.filename),
             delete=True,
         ) as tmp:
             content = await file.read()
@@ -79,14 +91,17 @@ class IngestionService:
         count = await self._repo.insert_many(db_chunks)
         logger.info("Ingested %d chunks from '%s' into namespace '%s'", count, source, namespace)
 
-        return {
-            "namespace": namespace,
-            "source": source,
-            "total_chunks": count,
-        }
+        return IngestionResult(namespace=namespace, source=source, total_chunks=count)
 
     def _validate_file(self, file: UploadFile) -> None:
         filename = file.filename or ""
         suffix = Path(filename).suffix.lower()
         if suffix not in SUPPORTED_EXTENSIONS:
             raise UnsupportedFileTypeError(suffix)
+
+    @staticmethod
+    def _safe_suffix(filename: str | None) -> str:
+        suffix = Path(filename or "file.txt").suffix.lower()
+        if suffix in SUPPORTED_EXTENSIONS:
+            return suffix
+        return ".txt"

@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,14 +19,15 @@ class Settings(BaseSettings):
     llm_provider: Literal["openai", "gemini"] = "openai"
 
     # OpenAI (required when llm_provider=openai)
-    openai_api_key: str = ""
+    openai_api_key: SecretStr = SecretStr("")
 
     # Gemini (required when llm_provider=gemini)
-    gemini_api_key: str = ""
+    gemini_api_key: SecretStr = SecretStr("")
 
     # Application
     app_env: str = "development"
     log_level: str = "INFO"
+    allowed_origins: list[str] = ["http://localhost:3000"]
 
     # RAG configuration
     chunk_size: int = 800
@@ -36,6 +37,7 @@ class Settings(BaseSettings):
     chat_model: str = "gpt-4o-mini"
     chat_temperature: float = 0.2
     retrieval_top_k: int = 4
+    agent_max_iterations: int = 5
 
     # Upload
     max_upload_size_mb: int = 10
@@ -46,9 +48,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_provider_keys(self) -> "Settings":
-        if self.llm_provider == "openai" and not self.openai_api_key:
+        if self.llm_provider == "openai" and not self.openai_api_key.get_secret_value():
             raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
-        if self.llm_provider == "gemini" and not self.gemini_api_key:
+        if self.llm_provider == "gemini" and not self.gemini_api_key.get_secret_value():
             raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
 
         # Set sensible defaults per provider if user hasn't overridden

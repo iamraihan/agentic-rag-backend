@@ -15,7 +15,7 @@ EMBEDDING_BATCH_SIZE = 100
 
 class GeminiProvider(LLMProvider):
     def __init__(self, settings: Settings) -> None:
-        self._client = genai.Client(api_key=settings.gemini_api_key)
+        self._client = genai.Client(api_key=settings.gemini_api_key.get_secret_value())
         self._chat_model = settings.chat_model
         self._embedding_model = settings.embedding_model
 
