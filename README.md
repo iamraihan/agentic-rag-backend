@@ -4,6 +4,10 @@ Production-grade Retrieval-Augmented Generation (RAG) API built with FastAPI, pg
 
 Upload documents (PDF, TXT, MD), chunk and embed them into pgvector, then chat with an AI agent that retrieves relevant context from your knowledge base before answering.
 
+## Frontend
+
+A React-based frontend client is available at [iamraihan/agentic-rag-client](https://github.com/iamraihan/agentic-rag-client).
+
 ## Features
 
 - **Document Ingestion** — Upload PDF, TXT, or Markdown files. Text is extracted, chunked (recursive character splitting), embedded, and stored in pgvector.
